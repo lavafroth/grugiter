@@ -29,6 +29,19 @@ func (s Mapper[T, V, U]) next() U {
 	return s.MapFn(s.State.Next())
 }
 
+type Filter[T IteratorImpl[V], V any] struct {
+	State Iterator[T, V]
+	MapFn func(V) bool
+}
+
+func (s Filter[T, V]) next() V {
+	nextElement := s.State.Next()
+	for !s.MapFn(nextElement) {
+		nextElement = s.State.Next()
+	}
+	return nextElement
+}
+
 func NewMapper[T IteratorImpl[V], V any, U any](iterator Iterator[T, V], mapFn func(V) U) Iterator[Mapper[T, V, U], U] {
 	mapper := Mapper[T, V, U]{
 		State: iterator,
@@ -37,6 +50,17 @@ func NewMapper[T IteratorImpl[V], V any, U any](iterator Iterator[T, V], mapFn f
 	return Iterator[Mapper[T, V, U], U]{
 		State: mapper,
 		Next:  mapper.next,
+	}
+}
+
+func NewFilter[T IteratorImpl[V], V any](iterator Iterator[T, V], mapFn func(V) bool) Iterator[Filter[T, V], V] {
+	filter := Filter[T, V]{
+		State: iterator,
+		MapFn: mapFn,
+	}
+	return Iterator[Filter[T, V], V]{
+		State: filter,
+		Next:  filter.next,
 	}
 }
 
@@ -67,9 +91,11 @@ func timesTwo(x int) int {
 func main() {
 	fib := Fibonacci{0, 1, 0}
 	fibIterator := NewIterator(&fib)
-	mapper := NewMapper(fibIterator, timesTwo)
+	timesTwoMapper := NewMapper(fibIterator, timesTwo)
+	plusOneMapper := NewMapper(timesTwoMapper, func(x int) int { return x + 1 })
+	divisibleBy3Filter := NewFilter(plusOneMapper, func(x int) bool { return x%3 == 0 })
 	for i := 0; i < 20; i++ {
-		f := mapper.Next()
+		f := divisibleBy3Filter.Next()
 		fmt.Printf("%d\n", f)
 	}
 }
