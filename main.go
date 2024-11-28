@@ -40,6 +40,9 @@ func NewMapper[T IteratorImpl[V], V any, U any](iterator Iterator[T, V], mapFn f
 	}
 }
 
+// That was all for defining my iterator.
+// This is where you start implementing your program.
+
 type Fibonacci struct {
 	Index    int
 	Value    int
