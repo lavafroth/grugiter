@@ -1,12 +1,12 @@
 package grugiter
 
-type IteratorImpl[T any] interface {
-	Next() T
+type IteratorImpl[V any] interface {
+	Next() *V
 }
 
 type Iterator[T IteratorImpl[V], V any] struct {
 	State T
-	Next  func() V
+	Next  func() *V
 }
 
 func NewIterator[T IteratorImpl[V], V any](state T) Iterator[T, V] {
@@ -21,8 +21,13 @@ type Mapper[T IteratorImpl[V], V any, U any] struct {
 	MapFn func(V) U
 }
 
-func (s Mapper[T, V, U]) Next() U {
-	return s.MapFn(s.State.Next())
+func (s Mapper[T, V, U]) Next() *U {
+	someOrNone := s.State.Next()
+	if someOrNone == nil {
+		return nil
+	}
+	mapped := s.MapFn(*someOrNone)
+	return &mapped
 }
 
 type Filter[T IteratorImpl[V], V any] struct {
@@ -30,10 +35,16 @@ type Filter[T IteratorImpl[V], V any] struct {
 	MapFn func(V) bool
 }
 
-func (s Filter[T, V]) Next() V {
+func (s Filter[T, V]) Next() *V {
 	nextElement := s.State.Next()
-	for !s.MapFn(nextElement) {
+	if nextElement == nil {
+		return nil
+	}
+	for !s.MapFn(*nextElement) {
 		nextElement = s.State.Next()
+		if nextElement == nil {
+			return nil
+		}
 	}
 	return nextElement
 }
